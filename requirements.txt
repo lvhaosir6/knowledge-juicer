@@ -1,0 +1,16 @@
+# Douyin Video Summarizer Dependencies
+
+# Video download
+yt-dlp>=2024.1.0
+
+# Audio processing (requires ffmpeg installed separately)
+# Download ffmpeg from: https://ffmpeg.org/download.html
+
+# Speech recognition
+funasr>=1.0.0
+modelscope>=1.10.0
+torch>=2.0.0
+torchaudio>=2.0.0
+
+# Optional: for better performance with GPU
+# Install with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
