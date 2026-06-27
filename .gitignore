@@ -6,6 +6,13 @@ output/
 douyin_output/
 douyin_output*/
 
+# Cookies 和认证文件
+cookies.txt
+cookies.json
+
+# 调试文件
+debug_page.html
+
 # Python缓存
 __pycache__/
 *.pyc

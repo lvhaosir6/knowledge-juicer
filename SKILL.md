@@ -14,8 +14,8 @@ Download Douyin videos, extract audio, transcribe to text, and generate structur
 Before using this skill, ensure the following tools are installed:
 
 ```bash
-# 1. yt-dlp (video download)
-pip install yt-dlp
+# 1. Selenium + Chrome WebDriver (video download)
+pip install selenium webdriver-manager
 
 # 2. ffmpeg (audio extraction)
 # Windows: download from https://ffmpeg.org/download.html
@@ -26,22 +26,31 @@ choco install ffmpeg
 pip install funasr modelscope torch torchaudio
 ```
 
+**Note:** yt-dlp alone no longer works for Douyin due to cookie requirements. Selenium is used to bypass this limitation.
+
 ## Workflow
 
 ### Step 1: Download Video
 
-```bash
-# Create output directory
-mkdir -p douyin_output
+Douyin requires cookies/authentication to download videos. Use the Selenium-based downloader:
 
-# Download video with yt-dlp
-yt-dlp -o "douyin_output/%(title)s.%(ext)s" --no-watermark "<DOUYIN_URL>"
+```bash
+# Download video using Selenium (handles cookies automatically)
+python scripts/download_douyin_selenium.py "<DOUYIN_URL>"
 ```
 
-**Common yt-dlp options for Douyin:**
-- `--no-watermark` - Download without watermark
-- `-f best` - Best quality
-- `--write-info-json` - Save video metadata
+This script will:
+- Launch a headless Chrome browser
+- Navigate to the Douyin video page
+- Intercept video URLs from network requests
+- Download the video to `douyin_output/video.mp4`
+
+**Alternative methods (if Selenium fails):**
+```bash
+# Get cookies first, then use yt-dlp
+python scripts/get_douyin_cookies.py "<DOUYIN_URL>"
+yt-dlp --cookies cookies.txt -o "douyin_output/video.mp4" "<DOUYIN_URL>"
+```
 
 ### Step 2: Extract Audio
 
@@ -97,10 +106,14 @@ Use the LLM to create a structured summary. Format the prompt:
 
 ## Complete Pipeline Script
 
-Use `scripts/summarize_douyin.py` for the full pipeline:
+Use `scripts/summarize_douyin.py` for the full pipeline (Note: download step needs to be run separately with Selenium):
 
 ```bash
-python scripts/summarize_douyin.py "<DOUYIN_URL>"
+# Step 1: Download video with Selenium
+python scripts/download_douyin_selenium.py "<DOUYIN_URL>"
+
+# Step 2: Run the rest of the pipeline (extract audio, transcribe, generate summary prompt)
+python scripts/summarize_douyin.py "<DOUYIN_URL>" --skip-download
 ```
 
 ## Output Structure
@@ -110,25 +123,29 @@ douyin_output/
 ├── video.mp4          # Original video
 ├── audio.wav          # Extracted audio
 ├── transcript.txt     # Raw transcript
-├── summary.md         # Generated summary
-└── metadata.json      # Video metadata
+├── transcript.json    # Transcript with timestamps
+└── summary.md         # Generated summary
 ```
 
 ## Error Handling
 
 | Error | Solution |
 |-------|----------|
-| `yt-dlp: command not found` | Run `pip install yt-dlp` |
+| `selenium` or `webdriver_manager` not installed | Run `pip install selenium webdriver-manager` |
 | `ffmpeg: command not found` | Install ffmpeg from ffmpeg.org |
 | `ModuleNotFoundError: funasr` | Run `pip install funasr modelscope torch torchaudio` |
 | CUDA out of memory | Use `device="cpu"` or reduce batch size |
-| Download fails | Check URL format, ensure video is public |
+| Download fails with cookies error | Run `python scripts/get_douyin_cookies.py` first |
+| Chrome driver issues | Run `pip install --upgrade webdriver-manager` |
 
 ## Tips
 
 1. **Batch processing**: Create a file with URLs (one per line) and use:
    ```bash
-   while read url; do python scripts/summarize_douyin.py "$url"; done < urls.txt
+   while read url; do 
+     python scripts/download_douyin_selenium.py "$url"
+     python scripts/summarize_douyin.py "$url" --skip-download
+   done < urls.txt
    ```
 
 2. **GPU acceleration**: If you have NVIDIA GPU:
@@ -138,4 +155,9 @@ douyin_output/
 
 3. **Long videos**: For videos > 10 minutes, FunASR automatically handles segmentation via VAD model.
 
-4. **Quality**: Use `--write-info-json` to preserve original video title and description for context.
+4. **Chrome browser required**: Selenium requires Chrome browser to be installed on the system.
+
+5. **Troubleshooting downloads**: If Selenium download fails, try:
+   - Update Chrome browser to latest version
+   - Run `pip install --upgrade selenium webdriver-manager`
+   - Check if the video is publicly accessible
