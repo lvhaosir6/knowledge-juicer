@@ -24,8 +24,12 @@ def download_douyin_video(url: str, output_dir: Path) -> bool:
     
     # Setup Chrome options
     chrome_options = Options()
+    chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
@@ -34,8 +38,9 @@ def download_douyin_video(url: str, output_dir: Path) -> bool:
     chrome_options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
     
     try:
-        # Initialize driver
-        service = Service(ChromeDriverManager().install())
+        # Initialize driver using cached ChromeDriver
+        chromedriver_path = r"C:\Users\lvhaosir\.wdm\drivers\chromedriver\win64\149.0.7827.155\chromedriver-win64\chromedriver.exe"
+        service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         # Execute CDP commands to prevent detection
@@ -135,6 +140,23 @@ def download_douyin_video(url: str, output_dir: Path) -> bool:
             driver.quit()
             return False
         
+        # Filter and prioritize video URLs
+        # Prefer URLs with higher quality indicators
+        prioritized_urls = []
+        for url in video_urls:
+            # Skip non-video URLs
+            if not any(ext in url.lower() for ext in ['.mp4', 'video', 'play', 'aweme']):
+                continue
+            # Skip small preview images
+            if 'thumbnail' in url.lower() or 'cover' in url.lower() or 'image' in url.lower():
+                continue
+            # Prioritize higher quality URLs
+            if 'play' in url.lower() or 'download' in url.lower() or '1080' in url:
+                prioritized_urls.insert(0, url)
+            else:
+                prioritized_urls.append(url)
+        
+        video_urls = prioritized_urls if prioritized_urls else video_urls
         print(f"Found {len(video_urls)} video URLs")
         
         # Try to download each video URL
@@ -197,11 +219,11 @@ def download_douyin_video(url: str, output_dir: Path) -> bool:
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python download_douyin_selenium.py <douyin_url>")
+        print("Usage: python download_douyin_selenium.py <douyin_url> [output_dir]")
         sys.exit(1)
     
     url = sys.argv[1]
-    output_dir = Path("douyin_output")
+    output_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("douyin_output")
     output_dir.mkdir(exist_ok=True)
     
     print(f"Downloading Douyin video: {url}")

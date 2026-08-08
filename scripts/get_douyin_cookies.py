@@ -18,16 +18,20 @@ def get_douyin_cookies(url: str, output_file: str) -> bool:
     
     # Setup Chrome options
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in background
+    chrome_options.binary_location = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+    chrome_options.add_argument("--headless=new")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
+    chrome_options.add_argument("--window-size=1920,1080")
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
     
     try:
-        # Initialize driver
-        service = Service(ChromeDriverManager().install())
+        # Initialize driver using cached ChromeDriver
+        chromedriver_path = r"C:\Users\lvhaosir\.wdm\drivers\chromedriver\win64\149.0.7827.155\chromedriver-win64\chromedriver.exe"
+        service = Service(chromedriver_path)
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         # Execute CDP commands to prevent detection
