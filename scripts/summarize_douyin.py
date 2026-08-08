@@ -12,6 +12,17 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_MODEL = str(PROJECT_ROOT / "SenseVoiceSmall")
+
+
+def resolve_model_path(model: str) -> str:
+    """Resolve relative model path against project root."""
+    p = Path(model)
+    if not p.is_absolute():
+        p = PROJECT_ROOT / p
+    return str(p)
+
 
 def run_command(cmd: list, description: str) -> bool:
     """Run a shell command and return success status."""
@@ -36,16 +47,21 @@ def run_command(cmd: list, description: str) -> bool:
         return False
 
 
-def download_video(url: str, output_dir: Path) -> Path:
+def download_video(url: str, output_dir: Path, cookie_file: str = "cookies.txt") -> Path:
     """Download Douyin video using yt-dlp."""
     output_template = str(output_dir / "%(title)s.%(ext)s")
     
     cmd = [
-        "yt-dlp",
+        sys.executable, "-m", "yt_dlp",
         "-o", output_template,
         "--write-info-json",
-        url
     ]
+    
+    # Use cookies if available (Douyin requires fresh cookies)
+    if Path(cookie_file).exists():
+        cmd += ["--cookies", cookie_file]
+    
+    cmd.append(url)
     
     if not run_command(cmd, "Download Douyin video"):
         return None
@@ -183,12 +199,13 @@ def main():
     parser = argparse.ArgumentParser(description="Douyin Video Summarizer Pipeline")
     parser.add_argument("url", help="Douyin video URL")
     parser.add_argument("-o", "--output", default=None, help="Output directory (default: output/YYYYMMDD_HHmmss)")
-    parser.add_argument("-m", "--model", default="./SenseVoiceSmall", help="Path to local SenseVoiceSmall model directory")
+    parser.add_argument("-m", "--model", default=DEFAULT_MODEL, help="Path to local SenseVoiceSmall model directory")
     parser.add_argument("-d", "--device", default="cpu", choices=["cpu", "cuda"], help="Device")
     parser.add_argument("--skip-download", action="store_true", help="Skip download step")
     parser.add_argument("--audio-only", help="Use existing audio file instead of downloading")
     
     args = parser.parse_args()
+    args.model = resolve_model_path(args.model)
     
     # Use default output directory if not specified
     if args.output is None:

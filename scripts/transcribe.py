@@ -10,6 +10,17 @@ import os
 import sys
 from pathlib import Path
 
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_MODEL = str(PROJECT_ROOT / "SenseVoiceSmall")
+
+
+def resolve_model_path(model: str) -> str:
+    """Resolve relative model path against project root."""
+    p = Path(model)
+    if not p.is_absolute():
+        p = PROJECT_ROOT / p
+    return str(p)
+
 
 def check_dependencies():
     """Check if required packages are installed."""
@@ -105,12 +116,13 @@ def main():
     parser = argparse.ArgumentParser(description="Transcribe audio using FunASR SenseVoiceSmall")
     parser.add_argument("audio", help="Path to audio file")
     parser.add_argument("-o", "--output", default=None, help="Output path (default: same as input)")
-    parser.add_argument("-m", "--model", default="./SenseVoiceSmall", 
+    parser.add_argument("-m", "--model", default=DEFAULT_MODEL, 
                         help="Path to local SenseVoiceSmall model directory")
     parser.add_argument("-d", "--device", default="cpu", choices=["cpu", "cuda"],
                         help="Device to use (cpu/cuda)")
     
     args = parser.parse_args()
+    args.model = resolve_model_path(args.model)
     
     # Check dependencies
     check_dependencies()
