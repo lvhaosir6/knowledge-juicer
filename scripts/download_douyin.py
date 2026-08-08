@@ -3,11 +3,13 @@
 Download Douyin video using requests and yt-dlp with cookies.
 """
 
+import argparse
 import requests
 import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 def get_video_url(url: str) -> str:
@@ -79,14 +81,22 @@ def download_with_ytdlp(url: str, output_path: str) -> bool:
         print(f"Error running yt-dlp: {e}")
         return False
 
+def get_default_output_dir() -> str:
+    """Generate default output directory name with timestamp."""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    return f"output/{timestamp}"
+
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python download_douyin.py <douyin_url>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Download Douyin video using requests and yt-dlp with cookies.")
+    parser.add_argument("url", help="Douyin video URL")
+    parser.add_argument("-o", "--output", default=None, help="Output directory (default: output/YYYYMMDD_HHmmss)")
+    args = parser.parse_args()
     
-    url = sys.argv[1]
-    output_dir = Path("douyin_output")
-    output_dir.mkdir(exist_ok=True)
+    url = args.url
+    if args.output is None:
+        args.output = get_default_output_dir()
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
     print(f"Downloading: {url}")
     

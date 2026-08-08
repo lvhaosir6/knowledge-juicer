@@ -3,12 +3,14 @@
 Download Douyin video using Selenium.
 """
 
+import argparse
 import json
 import os
 import re
 import time
 import sys
 import requests
+from datetime import datetime
 from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -141,16 +143,27 @@ def download_douyin_video(url: str, output_dir: Path) -> bool:
         
         # Filter and prioritize video URLs
         # Prefer URLs with higher quality indicators
+        # NOTE: only skip clearly-fake placeholders. Real douyinvod.com URLs may
+        # contain "default"/"watermark"/"cover" in their path, so don't filter those.
+        placeholder_tokens = [
+            'uuu_', 'placeholder', 'preview',
+            'loading_effect', 'play_effect', 'playing_effect',
+        ]
         prioritized_urls = []
         for url in video_urls:
             # Skip non-video URLs
             if not any(ext in url.lower() for ext in ['.mp4', 'video', 'play', 'aweme']):
                 continue
+            # Skip placeholder / preview / effect videos (e.g. Douyin's uuu_265.mp4 loading clip)
+            url_lower = url.lower()
+            if any(token in url_lower for token in placeholder_tokens):
+                print(f"Skipping placeholder URL: {url[:100]}...")
+                continue
             # Skip small preview images
-            if 'thumbnail' in url.lower() or 'cover' in url.lower() or 'image' in url.lower():
+            if 'thumbnail' in url_lower or 'cover' in url_lower or 'image' in url_lower:
                 continue
             # Prioritize higher quality URLs
-            if 'play' in url.lower() or 'download' in url.lower() or '1080' in url:
+            if 'play' in url_lower or 'download' in url_lower or '1080' in url:
                 prioritized_urls.insert(0, url)
             else:
                 prioritized_urls.append(url)
@@ -217,14 +230,17 @@ def download_douyin_video(url: str, output_dir: Path) -> bool:
         return False
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python download_douyin_selenium.py <douyin_url> [output_dir]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Download Douyin video using Selenium.")
+    parser.add_argument("url", help="Douyin video URL")
+    parser.add_argument("-o", "--output", default=None, help="Output directory (default: output/YYYYMMDD_HHmmss)")
+    args = parser.parse_args()
     
-    url = sys.argv[1]
-    output_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("douyin_output")
-    output_dir.mkdir(exist_ok=True)
+    if args.output is None:
+        args.output = f"output/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
+    url = args.url
     print(f"Downloading Douyin video: {url}")
     
     if download_douyin_video(url, output_dir):

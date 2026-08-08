@@ -3,11 +3,13 @@
 Download Douyin video using Playwright.
 """
 
+import argparse
 import asyncio
 import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 from playwright.async_api import async_playwright
 
@@ -140,14 +142,17 @@ async def download_douyin_video(url: str, output_dir: Path) -> bool:
             await browser.close()
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python download_douyin_playwright.py <douyin_url>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Download Douyin video using Playwright.")
+    parser.add_argument("url", help="Douyin video URL")
+    parser.add_argument("-o", "--output", default=None, help="Output directory (default: output/YYYYMMDD_HHmmss)")
+    args = parser.parse_args()
     
-    url = sys.argv[1]
-    output_dir = Path("douyin_output")
-    output_dir.mkdir(exist_ok=True)
+    if args.output is None:
+        args.output = f"output/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
+    url = args.url
     print(f"Downloading Douyin video: {url}")
     
     # Run the async function

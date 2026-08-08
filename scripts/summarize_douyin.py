@@ -13,7 +13,12 @@ from pathlib import Path
 from datetime import datetime
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_MODEL = str(PROJECT_ROOT / "SenseVoiceSmall")
+
+sys.path.insert(0, str(SCRIPT_DIR))
+
+import llm_config  # noqa: E402
 
 
 def resolve_model_path(model: str) -> str:
@@ -203,6 +208,9 @@ def main():
     parser.add_argument("-d", "--device", default="cpu", choices=["cpu", "cuda"], help="Device")
     parser.add_argument("--skip-download", action="store_true", help="Skip download step")
     parser.add_argument("--audio-only", help="Use existing audio file instead of downloading")
+    parser.add_argument("--llm-api-key", default="", help="Overwrite LLM_API_KEY from .env")
+    parser.add_argument("--llm-base-url", default="", help="Overwrite LLM_BASE_URL from .env")
+    parser.add_argument("--llm-model", default="", help="Overwrite LLM_MODEL from .env")
     
     args = parser.parse_args()
     args.model = resolve_model_path(args.model)
@@ -261,6 +269,25 @@ def main():
         f.write(prompt)
     print(f"\nSummary prompt saved: {prompt_path}")
     
+    # Step 5: Generate final summary with LLM if configured
+    config = llm_config.get_config(
+        api_key=args.llm_api_key, base_url=args.llm_base_url, model=args.llm_model
+    )
+    summary_path = None
+    if llm_config.is_configured(config):
+        print(f"\nCalling LLM ({config['model']}) ...")
+        try:
+            summary = llm_config.generate_summary(prompt, config)
+            summary_path = output_dir / "summary.md"
+            with open(summary_path, "w", encoding="utf-8") as f:
+                f.write(summary)
+            print(f"Summary saved: {summary_path}")
+        except Exception as e:
+            print(f"LLM call failed: {e}")
+            llm_config.print_config_hint()
+    else:
+        llm_config.print_config_hint()
+    
     # Save pipeline metadata
     pipeline_meta = {
         "url": args.url,
@@ -268,7 +295,8 @@ def main():
         "model": args.model,
         "device": args.device,
         "video_title": metadata.get("title", ""),
-        "transcript_length": len(transcript["text"])
+        "transcript_length": len(transcript["text"]),
+        "summary_generated": summary_path is not None,
     }
     
     meta_path = output_dir / "pipeline_metadata.json"
@@ -280,9 +308,12 @@ def main():
     print(f"Output directory: {output_dir}")
     print(f"Transcript: {transcript['path']}")
     print(f"Summary prompt: {prompt_path}")
+    if summary_path:
+        print(f"Summary: {summary_path}")
     print('='*50)
-    print("\nNext step: Use the summary prompt with an LLM to generate the final summary.")
-    print("You can copy the prompt content and paste it to your AI assistant.")
+    if not summary_path:
+        print("\nNext step: Use the summary prompt with an LLM to generate the final summary.")
+        print("You can copy the prompt content and paste it to your AI assistant.")
 
 
 if __name__ == "__main__":

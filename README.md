@@ -133,6 +133,8 @@ python scripts/summarize_douyin.py "https://v.douyin.com/xxxxx" --device cuda
 python scripts/summarize_douyin.py "https://v.douyin.com/xxxxx" --audio-only ./audio.wav
 ```
 
+> 💡 与 B站一致，配置 `.env`（复制 `.env.example`）后会自动调用 LLM 生成 `summary.md`；未配置时仍生成 `summary_prompt.md`，此时由当前 agent（opencode/ClaudeCode 等）读取提示词完成 `summary.md`。可用 `--llm-api-key` / `--llm-base-url` / `--llm-model` 覆盖 `.env`。
+
 ## 📁 输出结构
 
 ```
@@ -155,6 +157,9 @@ Options:
   -d, --device DEVICE   设备: cpu/cuda (默认: cpu)
   --skip-download       跳过下载步骤
   --audio-only FILE     直接使用已有音频文件
+  --llm-api-key KEY     覆盖 .env 中的 LLM_API_KEY
+  --llm-base-url URL    覆盖 .env 中的 LLM_BASE_URL
+  --llm-model MODEL     覆盖 .env 中的 LLM_MODEL
 ```
 
 ---
@@ -184,7 +189,7 @@ python scripts/download_bilibili.py "https://www.bilibili.com/video/BV1U9iEBREWt
 
 ### LLM 自动总结
 
-脚本默认只生成 `summary_prompt.md`（可复制给任意 AI）。如需自动总结，配置 `.env`：
+脚本默认只生成 `summary_prompt.md`。在 agent 中运行时（opencode/ClaudeCode 等），由当前 agent 读取提示词直接完成 `summary.md`；如需脚本自动调用 LLM，配置 `.env`：
 
 ```bash
 cp .env.example .env

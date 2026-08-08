@@ -3,9 +3,11 @@
 Direct Douyin video downloader using requests + cookies.
 """
 
+import argparse
 import json
 import re
 import sys
+from datetime import datetime
 from pathlib import Path
 import requests
 
@@ -102,14 +104,17 @@ def download_video(url: str, output_path: Path) -> bool:
     return output_path.stat().st_size > 100000
 
 def main():
-    if len(sys.argv) < 3:
-        print("Usage: python download_douyin_direct.py <share_url> <output_dir>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Direct Douyin video downloader using requests + cookies.")
+    parser.add_argument("url", help="Douyin share URL")
+    parser.add_argument("-o", "--output", default=None, help="Output directory (default: output/YYYYMMDD_HHmmss)")
+    args = parser.parse_args()
     
-    share_url = sys.argv[1]
-    output_dir = Path(sys.argv[2])
-    output_dir.mkdir(exist_ok=True)
+    if args.output is None:
+        args.output = f"output/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_dir = Path(args.output)
+    output_dir.mkdir(parents=True, exist_ok=True)
     
+    share_url = args.url
     # Resolve share URL
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'

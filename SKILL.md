@@ -36,6 +36,7 @@ Douyin requires cookies/authentication to download videos. Use the Selenium-base
 
 ```bash
 # Download video using Selenium (handles cookies automatically)
+# Outputs to output/YYYYMMDD_HHmmss/ by default; use -o to override
 python scripts/download_douyin_selenium.py "<DOUYIN_URL>"
 ```
 
@@ -43,20 +44,20 @@ This script will:
 - Launch a headless Chrome browser
 - Navigate to the Douyin video page
 - Intercept video URLs from network requests
-- Download the video to `douyin_output/video.mp4`
+- Download the video to `output/<timestamp>/video.mp4`
 
 **Alternative methods (if Selenium fails):**
 ```bash
 # Get cookies first, then use yt-dlp
 python scripts/get_douyin_cookies.py "<DOUYIN_URL>"
-yt-dlp --cookies cookies.txt -o "douyin_output/video.mp4" "<DOUYIN_URL>"
+yt-dlp --cookies cookies.txt -o "output/%(title)s.%(ext)s" "<DOUYIN_URL>"
 ```
 
 ### Step 2: Extract Audio
 
 ```bash
 # Extract audio as WAV (16kHz mono for ASR)
-ffmpeg -i "douyin_output/video.mp4" -vn -acodec pcm_s16le -ar 16000 -ac 1 "douyin_output/audio.wav"
+ffmpeg -i "output/<timestamp>/video.mp4" -vn -acodec pcm_s16le -ar 16000 -ac 1 "output/<timestamp>/audio.wav"
 ```
 
 ### Step 3: Transcribe with FunASR
@@ -75,7 +76,7 @@ model = AutoModel(
 )
 
 # Transcribe
-result = model.generate(input="douyin_output/audio.wav")
+result = model.generate(input="output/<timestamp>/audio.wav")
 text = result[0]["text"]
 print(text)
 ```
@@ -109,12 +110,30 @@ Use the LLM to create a structured summary. Format the prompt:
 Use `scripts/summarize_douyin.py` for the full pipeline (Note: download step needs to be run separately with Selenium):
 
 ```bash
-# Step 1: Download video with Selenium
+# Step 1: Download video with Selenium (note the output dir, e.g. output/20260808_153804)
 python scripts/download_douyin_selenium.py "<DOUYIN_URL>"
 
-# Step 2: Run the rest of the pipeline (extract audio, transcribe, generate summary prompt)
-python scripts/summarize_douyin.py "<DOUYIN_URL>" --skip-download
+# Step 2: Run the rest of the pipeline, pointing -o at the same directory from Step 1
+python scripts/summarize_douyin.py "<DOUYIN_URL>" -o output/<timestamp> --skip-download
 ```
+
+Or run the whole pipeline in one command (downloads internally with yt-dlp):
+
+```bash
+python scripts/summarize_douyin.py "<DOUYIN_URL>"
+```
+
+### Douyin LLM auto-summary
+
+Same as Bilibili — configure `.env` (copy from `.env.example`) to auto-generate `summary.md`:
+
+```
+LLM_API_KEY=sk-xxxx
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+```
+
+If no `LLM_API_KEY`, the script still produces `summary_prompt.md`. When running inside an agent (opencode / ClaudeCode), **the agent itself completes `summary.md`** by reading `summary_prompt.md` / `transcript.txt`, matching the Bilibili workflow. CLI args `--llm-api-key` / `--llm-base-url` / `--llm-model` override `.env`.
 
 ## Bilibili Workflow
 
@@ -147,7 +166,7 @@ LLM_BASE_URL=https://api.deepseek.com/v1
 LLM_MODEL=deepseek-chat
 ```
 
-If no `LLM_API_KEY`, the script still produces `summary_prompt.md` for any AI to use. CLI args `--llm-api-key` / `--llm-base-url` / `--llm-model` override `.env`.
+If no `LLM_API_KEY`, the script still produces `summary_prompt.md`. When running inside an agent (opencode / ClaudeCode), **the agent itself completes `summary.md`** by reading `summary_prompt.md` / `transcript.txt`. CLI args `--llm-api-key` / `--llm-base-url` / `--llm-model` override `.env`.
 
 ### Bilibili output structure
 
@@ -165,13 +184,18 @@ output/bili_<BV>_p<N>_<timestamp>/
 
 ## Output Structure
 
+All videos (Douyin & Bilibili) are stored under `output/`:
+
 ```
-douyin_output/
-├── video.mp4          # Original video
-├── audio.wav          # Extracted audio
-├── transcript.txt     # Raw transcript
-├── transcript.json    # Transcript with timestamps
-└── summary.md         # Generated summary
+output/
+├── <timestamp>/                 # Douyin
+│   ├── video.mp4             # Original video
+│   ├── audio.wav             # Extracted audio
+│   ├── transcript.txt        # Raw transcript
+│   ├── transcript.json       # Transcript with timestamps
+│   ├── summary_prompt.md     # Summary prompt
+│   └── summary.md            # LLM summary (if .env configured)
+└── bili_<BV>_p<N>_<timestamp>/  # Bilibili
 ```
 
 ## Error Handling
@@ -190,8 +214,7 @@ douyin_output/
 1. **Batch processing**: Create a file with URLs (one per line) and use:
    ```bash
    while read url; do 
-     python scripts/download_douyin_selenium.py "$url"
-     python scripts/summarize_douyin.py "$url" --skip-download
+     python scripts/summarize_douyin.py "$url"
    done < urls.txt
    ```
 

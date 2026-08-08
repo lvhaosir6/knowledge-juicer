@@ -4,10 +4,12 @@ Download Douyin video by parsing the public video page.
 Uses requests only - no browser automation needed.
 """
 
+import argparse
 import re
 import sys
 import json
 import requests
+from datetime import datetime
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -127,15 +129,17 @@ def download_from_url(video_url: str, output_dir: Path, session: requests.Sessio
     return size > 100000
 
 def main():
-    if len(sys.argv) < 2:
-        print("Usage: python download_douyin_parse.py <share_url> [output_dir]")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Download Douyin video by parsing the public video page.")
+    parser.add_argument("url", help="Douyin share URL")
+    parser.add_argument("-o", "--output", default=None, help="Output directory (default: output/YYYYMMDD_HHmmss)")
+    args = parser.parse_args()
     
-    share_url = sys.argv[1]
-    output_dir = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("douyin_output")
+    if args.output is None:
+        args.output = f"output/{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+    output_dir = Path(args.output)
     
-    print(f"Downloading: {share_url}")
-    if download_video(share_url, output_dir):
+    print(f"Downloading: {args.url}")
+    if download_video(args.url, output_dir):
         print("Success!")
     else:
         print("Failed!")
