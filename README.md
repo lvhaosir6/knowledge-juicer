@@ -27,7 +27,7 @@
 | 平台 | 状态 | 说明 |
 |------|------|------|
 | 🎵 抖音 | ✅ 已支持 | 完整支持，包括图文、视频 |
-| 📺 B站 | 🔄 计划中 | |
+| 📺 B站 | ✅ 已支持 | 单P下载 + AI字幕快路径 + 转录总结 |
 | 📹 YouTube | 🔄 计划中 | |
 | 🎬 快手 | 🔄 计划中 | |
 | 📱 小红书 | 🔄 计划中 | |
@@ -156,6 +156,86 @@ Options:
   --skip-download       跳过下载步骤
   --audio-only FILE     直接使用已有音频文件
 ```
+
+---
+
+## 📺 B站视频总结
+
+### 快速开始
+
+```bash
+# 基本用法（默认第1集）
+python scripts/summarize_bilibili.py "https://www.bilibili.com/video/BV1U9iEBREWt"
+
+# 指定第 N 集（多P合集）
+python scripts/summarize_bilibili.py "https://www.bilibili.com/video/BV1U9iEBREWt" --p 15
+
+# 单独下载（不转录）
+python scripts/download_bilibili.py "https://www.bilibili.com/video/BV1U9iEBREWt" --p 15 -o bilibili_output
+```
+
+> 💡 B站多P合集默认**只处理第1集**。用 `--p N` 指定具体集数（如 `--p 15`）。
+
+### 工作原理
+
+1. **字幕快路径**：优先检测 B站 AI 字幕，存在则直接下载字幕文本，**跳过音频下载和 ASR**（更快更准）
+2. **音频下载**：无字幕时通过 Bilibili API 直连下载纯音频流（绕过 yt-dlp 的 HTTP 412 反爬问题），失败时回退 yt-dlp
+3. **转录 + 总结**：复用 SenseVoiceSmall 转录，生成结构化总结
+
+### LLM 自动总结
+
+脚本默认只生成 `summary_prompt.md`（可复制给任意 AI）。如需自动总结，配置 `.env`：
+
+```bash
+cp .env.example .env
+# 编辑 .env，填入：
+# LLM_API_KEY=sk-xxxx
+# LLM_BASE_URL=https://api.deepseek.com/v1   # OpenAI 兼容接口
+# LLM_MODEL=deepseek-chat
+```
+
+配置后运行脚本会自动调用 LLM 生成 `summary.md`；也可用 `--llm-api-key` / `--llm-base-url` / `--llm-model` 覆盖 `.env`。
+
+### B站输出结构
+
+```
+output/bili_BV1U9iEBREWt_p1_20260101_120000/
+├── metadata.json       # 视频元数据（标题/UP主/标签/统计）
+├── subtitle.txt        # AI 字幕（若可用）
+├── audio.m4a           # 音频流（若无字幕）
+├── audio.wav           # 提取的音频
+├── transcript.txt      # 转录文本
+├── summary_prompt.md   # 总结提示词（可给任意 AI）
+├── summary.md          # LLM 总结（配置 .env 后生成）
+└── pipeline_metadata.json
+```
+
+### B站参数说明
+
+```bash
+python scripts/summarize_bilibili.py [URL] [OPTIONS]
+
+Options:
+  -p, --page N         指定集数 (默认: URL 中的 p 或 1)
+  -o, --output DIR     输出目录
+  -m, --model MODEL    模型路径 (默认: ./SenseVoiceSmall)
+  -d, --device DEVICE  设备: cpu/cuda (默认: cpu)
+  --skip-download      复用输出目录中已有的音频/字幕
+  --audio-only FILE    直接使用已有音频文件
+  --llm-api-key KEY    覆盖 .env 中的 LLM_API_KEY
+  --llm-base-url URL   覆盖 .env 中的 LLM_BASE_URL
+  --llm-model MODEL    覆盖 .env 中的 LLM_MODEL
+  --no-ytdlp           禁止回退 yt-dlp
+```
+
+### B站错误处理
+
+| 错误 | 解决 |
+|------|------|
+| `Page N out of range` | 该视频没有第 N 集，用 `--p` 指定有效集数 |
+| 下载音频失败 | 脚本会自动回退 yt-dlp；仍失败可更新 yt-dlp |
+| `LLM call failed` | 检查 `.env` 中 API Key 和 Base URL 是否正确 |
+| AI 字幕不可用 | 部分视频字幕需登录，会走音频转录路径，属正常行为 |
 
 ## 💡 应用场景
 

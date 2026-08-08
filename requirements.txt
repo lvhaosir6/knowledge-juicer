@@ -12,5 +12,8 @@ modelscope>=1.10.0
 torch>=2.0.0
 torchaudio>=2.0.0
 
+# .env 配置加载
+python-dotenv>=1.0.0
+
 # Optional: for better performance with GPU
 # Install with: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118

@@ -1,13 +1,13 @@
 ---
 name: douyin-summarizer
-description: 'Download Douyin (TikTok China) videos, transcribe audio to text using FunASR, and generate structured summaries. Use when user provides a Douyin video URL or asks to summarize a Douyin video.'
+description: 'Download Douyin (TikTok China) and Bilibili videos, transcribe audio to text using FunASR, and generate structured summaries. Use when user provides a Douyin video URL, a Bilibili video URL, or asks to summarize a video from either platform.'
 license: MIT
 allowed-tools: Bash, Read, Write
 ---
 
-# Douyin Video Summarizer
+# Video Summarizer (Douyin + Bilibili)
 
-Download Douyin videos, extract audio, transcribe to text, and generate structured summaries.
+Download Douyin/Bilibili videos, extract audio, transcribe to text, and generate structured summaries.
 
 ## Prerequisites
 
@@ -114,6 +114,53 @@ python scripts/download_douyin_selenium.py "<DOUYIN_URL>"
 
 # Step 2: Run the rest of the pipeline (extract audio, transcribe, generate summary prompt)
 python scripts/summarize_douyin.py "<DOUYIN_URL>" --skip-download
+```
+
+## Bilibili Workflow
+
+Bilibili supports **single-part download + summarization**. Direct API calls are used to bypass yt-dlp's intermittent HTTP 412 anti-crawler errors.
+
+### Step 1: Summarize a Bilibili video
+
+```bash
+# Default: first part
+python scripts/summarize_bilibili.py "https://www.bilibili.com/video/BV1U9iEBREWt"
+
+# Specific part in a multi-part anthology
+python scripts/summarize_bilibili.py "https://www.bilibili.com/video/BV1U9iEBREWt" --p 15
+```
+
+### How it works
+
+1. **Metadata**: `api.bilibili.com/x/web-interface/view` (no auth) → title, part list, uploader, tags, stats
+2. **Subtitle fast-path**: `x/player/wbi/v2` → if AI subtitles exist, download them as text and **skip audio + ASR**
+3. **Audio download**: if no subtitles → `x/player/playurl` DASH audio stream (with Referer header), fallback to yt-dlp
+4. **Transcribe + summarize**: reuse FunASR/SenseVoiceSmall, then generate structured summary
+
+### LLM auto-summary
+
+Configure `.env` (copy from `.env.example`) to auto-generate `summary.md`:
+
+```
+LLM_API_KEY=sk-xxxx
+LLM_BASE_URL=https://api.deepseek.com/v1
+LLM_MODEL=deepseek-chat
+```
+
+If no `LLM_API_KEY`, the script still produces `summary_prompt.md` for any AI to use. CLI args `--llm-api-key` / `--llm-base-url` / `--llm-model` override `.env`.
+
+### Bilibili output structure
+
+```
+output/bili_<BV>_p<N>_<timestamp>/
+├── metadata.json
+├── subtitle.txt          # AI subtitles (if available)
+├── audio.m4a             # audio stream (if no subtitles)
+├── audio.wav
+├── transcript.txt
+├── summary_prompt.md
+├── summary.md            # LLM summary (if .env configured)
+└── pipeline_metadata.json
 ```
 
 ## Output Structure
