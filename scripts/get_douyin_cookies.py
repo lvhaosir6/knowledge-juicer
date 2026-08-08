@@ -29,9 +29,8 @@ def get_douyin_cookies(url: str, output_file: str) -> bool:
     chrome_options.add_experimental_option('useAutomationExtension', False)
     
     try:
-        # Initialize driver using cached ChromeDriver
-        chromedriver_path = r"C:\Users\lvhaosir\.wdm\drivers\chromedriver\win64\149.0.7827.155\chromedriver-win64\chromedriver.exe"
-        service = Service(chromedriver_path)
+        # Initialize driver using managed ChromeDriver
+        service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         # Execute CDP commands to prevent detection

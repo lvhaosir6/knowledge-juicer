@@ -12,6 +12,8 @@ cookies.json
 
 # 调试文件
 debug_page.html
+scripts/debug_*.py
+scripts/test_*.py
 
 # Python缓存
 __pycache__/

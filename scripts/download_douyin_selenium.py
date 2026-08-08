@@ -38,9 +38,8 @@ def download_douyin_video(url: str, output_dir: Path) -> bool:
     chrome_options.set_capability('goog:loggingPrefs', {'performance': 'ALL'})
     
     try:
-        # Initialize driver using cached ChromeDriver
-        chromedriver_path = r"C:\Users\lvhaosir\.wdm\drivers\chromedriver\win64\149.0.7827.155\chromedriver-win64\chromedriver.exe"
-        service = Service(chromedriver_path)
+        # Initialize driver using managed ChromeDriver
+        service = Service(ChromeDriverManager().install())
         driver = webdriver.Chrome(service=service, options=chrome_options)
         
         # Execute CDP commands to prevent detection
