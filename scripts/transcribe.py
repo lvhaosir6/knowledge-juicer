@@ -12,6 +12,7 @@ from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MODEL = str(PROJECT_ROOT / "SenseVoiceSmall")
+DEFAULT_VAD_MODEL = str(PROJECT_ROOT / "models" / "speech_fsmn_vad_zh-cn-16k-common-pytorch")
 
 
 def resolve_model_path(model: str) -> str:
@@ -58,10 +59,11 @@ def transcribe(audio_path: str, model_path: str = "./SenseVoiceSmall", device: s
     print(f"Loading model from: {model_path}...")
     model = AutoModel(
         model=model_path,
-        vad_model="fsmn-vad",
+        vad_model=DEFAULT_VAD_MODEL,
         vad_kwargs={"max_single_segment_time": 30000},
         device=device,
-        hub="hf",
+        hub="ms",
+        disable_update=True,
     )
     
     print(f"Transcribing: {audio_path}")

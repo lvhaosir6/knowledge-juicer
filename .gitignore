@@ -1,5 +1,9 @@
 # 模型文件（约1GB，用户自行下载）
 SenseVoiceSmall/
+models/
+
+# 虚拟环境
+.venv/
 
 # 输出目录
 output/

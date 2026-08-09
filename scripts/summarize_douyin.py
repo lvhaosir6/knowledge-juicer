@@ -15,6 +15,7 @@ from datetime import datetime
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_MODEL = str(PROJECT_ROOT / "SenseVoiceSmall")
+DEFAULT_VAD_MODEL = str(PROJECT_ROOT / "models" / "speech_fsmn_vad_zh-cn-16k-common-pytorch")
 
 sys.path.insert(0, str(SCRIPT_DIR))
 
@@ -117,10 +118,11 @@ def transcribe_audio(audio_path: Path, output_dir: Path, model: str = "./SenseVo
     print("Loading model...")
     asr_model = AutoModel(
         model=model,
-        vad_model="fsmn-vad",
+        vad_model=DEFAULT_VAD_MODEL,
         vad_kwargs={"max_single_segment_time": 30000},
         device=device,
-        hub="hf",
+        hub="ms",
+        disable_update=True,
     )
     
     print("Transcribing...")
